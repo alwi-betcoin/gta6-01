@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SOLANO HEAT — an open-world crime game in Port Solano</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a0f0a; font-family: "Segoe UI", Arial, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; color: #fff; }
+  #hud[hidden] { display: none; }
+  #topRight { position: absolute; top: 14px; right: 18px; text-align: right; }
+  #cash { font-size: 30px; font-weight: 800; color: #7dff8a; text-shadow: 0 2px 6px rgba(0,0,0,.65); letter-spacing: .5px; }
+  #stars { font-size: 26px; letter-spacing: 3px; color: #ffd23f; text-shadow: 0 2px 6px rgba(0,0,0,.7); min-height: 30px; }
+  #stars .off { color: rgba(255,255,255,.22); }
+  #clock { font-size: 13px; color: rgba(255,255,255,.85); text-shadow: 0 1px 4px rgba(0,0,0,.7); }
+  #bottomRight { position: absolute; right: 18px; bottom: 16px; width: 230px; text-align: right; }
+  #healthWrap { background: rgba(10,10,14,.55); border: 1px solid rgba(255,255,255,.35); height: 15px; border-radius: 3px; overflow: hidden; }
+  #healthBar { height: 100%; width: 100%; background: linear-gradient(90deg, #e33, #f66); transition: width .15s; }
+  #carHealthWrap { background: rgba(10,10,14,.55); border: 1px solid rgba(255,255,255,.25); height: 8px; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+  #carHealthBar { height: 100%; width: 100%; background: #7db4ff; transition: width .15s; }
+  #weapon { margin-top: 5px; font-size: 15px; font-weight: 700; letter-spacing: 2px; color: #ffe9b0; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+  #objective { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); max-width: 620px; text-align: center;
+    background: rgba(12,10,16,.62); border: 1px solid rgba(255,210,63,.5); border-radius: 6px; padding: 7px 16px 8px; }
+  #objective[hidden] { display: none; }
+  #objectiveText { font-size: 16.5px; font-weight: 600; text-shadow: 0 1px 3px #000; }
+  #objectiveMeta { font-size: 13px; color: #ffd23f; font-weight: 700; margin-top: 1px; }
+  #prompt { position: absolute; bottom: 118px; left: 50%; transform: translateX(-50%); font-size: 17px; font-weight: 700;
+    background: rgba(12,10,16,.66); padding: 6px 14px; border-radius: 5px; text-shadow: 0 1px 3px #000; }
+  #prompt[hidden] { display: none; }
+  #prompt b { color: #ffd23f; }
+  #subtitle { position: absolute; bottom: 64px; left: 50%; transform: translateX(-50%); max-width: 700px; text-align: center;
+    font-size: 17px; line-height: 1.35; text-shadow: 0 2px 5px #000, 0 0 14px rgba(0,0,0,.6); }
+  #subtitle[hidden] { display: none; }
+  #subtitle b { color: #ffb36b; }
+  #banner { position: absolute; top: 24%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity .4s; }
+  #banner .big { font-size: 44px; font-weight: 900; letter-spacing: 3px; color: #ffd23f; text-shadow: 0 3px 14px rgba(0,0,0,.75); }
+  #banner .small { font-size: 19px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.8); margin-top: 2px; }
+  #minimap { position: absolute; left: 16px; bottom: 16px; border-radius: 50%; border: 3px solid rgba(255,255,255,.55);
+    box-shadow: 0 4px 18px rgba(0,0,0,.5); background: #20303c; }
+  #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); font-size: 22px; color: rgba(255,255,255,.9);
+    text-shadow: 0 0 5px #000; }
+  #crosshair[hidden] { display: none; }
+  #damageFlash { position: fixed; inset: 0; background: radial-gradient(ellipse at center, transparent 55%, rgba(200,20,20,.5) 100%);
+    opacity: 0; pointer-events: none; transition: opacity .1s; }
+  .floater { position: absolute; font-weight: 800; font-size: 19px; color: #7dff8a; text-shadow: 0 2px 5px #000;
+    animation: rise 1.4s ease-out forwards; }
+  @keyframes rise { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-52px); opacity: 0; } }
+
+  /* ---------- Menus ---------- */
+  .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #fff; text-align: center; pointer-events: auto; }
+  .screen[hidden] { display: none; }
+  #menu { background: linear-gradient(180deg, rgba(30,10,20,.18) 0%, rgba(30,10,20,.55) 78%, rgba(16,6,10,.85) 100%); }
+  #gameTitle { font-size: 84px; font-weight: 900; letter-spacing: 4px; line-height: .95;
+    background: linear-gradient(180deg, #ffe9a8 15%, #ffb36b 45%, #ff5da2 90%); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 rgba(90,10,40,.55)) drop-shadow(0 10px 26px rgba(0,0,0,.6)); }
+  #gameSub { font-size: 19px; letter-spacing: 6px; color: #ffe9b0; text-shadow: 0 2px 8px #000; margin-top: 6px; }
+  #blurb { max-width: 560px; font-size: 15.5px; line-height: 1.45; color: rgba(255,255,255,.92); text-shadow: 0 1px 5px #000; margin: 16px 0 6px; }
+  .menuBtn { pointer-events: auto; cursor: pointer; margin-top: 12px; min-width: 250px; padding: 11px 22px; font-size: 19px; font-weight: 800;
+    letter-spacing: 2px; color: #20130a; background: linear-gradient(180deg, #ffd23f, #ff9e3d); border: 0; border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .menuBtn:hover { filter: brightness(1.1); }
+  .menuBtn[disabled] { filter: grayscale(.8); opacity: .45; cursor: default; }
+  #controls { margin-top: 20px; font-size: 13.5px; line-height: 1.65; color: rgba(255,255,255,.85); text-shadow: 0 1px 4px #000; }
+  #controls b { color: #ffd23f; }
+  .panel { background: rgba(14,10,16,.82); border: 1px solid rgba(255,210,63,.4); border-radius: 10px; padding: 26px 38px; }
+  .panel h2 { margin: 0 0 6px; font-size: 40px; letter-spacing: 3px; }
+  .panel p { margin: 4px 0; font-size: 16px; color: rgba(255,255,255,.9); }
+  #bustedScreen h2 { color: #7db4ff; }
+  #wastedScreen h2 { color: #ff5147; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="SOLANO HEAT: a 3D open-world crime game set in Port Solano"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud" hidden>
+  <div id="objective" hidden><div id="objectiveText"></div><div id="objectiveMeta"></div></div>
+  <div id="topRight">
+    <div id="stars"></div>
+    <div id="cash">$0</div>
+    <div id="clock">PORT SOLANO</div>
+  </div>
+  <div id="banner"><div class="big"></div><div class="small"></div></div>
+  <div id="prompt" hidden></div>
+  <div id="subtitle" hidden></div>
+  <div id="bottomRight">
+    <div id="healthWrap"><div id="healthBar"></div></div>
+    <div id="carHealthWrap" hidden><div id="carHealthBar"></div></div>
+    <div id="weapon">FISTS</div>
+  </div>
+  <canvas id="minimap" width="196" height="196"></canvas>
+  <div id="crosshair" hidden>+</div>
+</div>
+<div id="damageFlash"></div>
+
+<div id="menu" class="screen">
+  <div id="gameTitle">SOLANO<br>HEAT</div>
+  <div id="gameSub">PORT SOLANO · EST. SUNSHINE</div>
+  <p id="blurb">Dario "Dash" Kane was the fastest wheelman on the coast — until the Cordero crew left him
+    with nothing. Now fixer Marisol Vega has work, the streets are golden, and every job takes him one
+    run closer to payback. Drive anything. Outrun everyone. Get rich or get busted.</p>
+  <button id="btnNew" class="menuBtn">NEW GAME</button>
+  <button id="btnContinue" class="menuBtn">CONTINUE</button>
+  <div id="controls">
+    <b>WASD</b> move / drive · <b>Mouse</b> camera (click the game to lock) · <b>Shift</b> sprint / boost<br>
+    <b>E</b> steal &amp; exit car · <b>Space</b> jump / handbrake · <b>Mouse click</b> punch / shoot · <b>Q</b> fists / pistol<br>
+    <b>Esc / P</b> pause · Follow the <b>yellow beacon</b> for Marisol's jobs · Lose the cops to cool off
+  </div>
+</div>
+
+<div id="pauseMenu" class="screen" hidden>
+  <div class="panel">
+    <h2>PAUSED</h2>
+    <p id="pauseStats"></p>
+    <button id="btnResume" class="menuBtn">RESUME</button><br>
+    <button id="btnQuit" class="menuBtn">SAVE &amp; TITLE</button>
+  </div>
+</div>
+
+<div id="bustedScreen" class="screen" hidden>
+  <div class="panel">
+    <h2>BUSTED</h2>
+    <p id="bustedText">Port Solano PD got you.</p>
+    <button id="btnBusted" class="menuBtn">PAY FINE &amp; WALK</button>
+  </div>
+</div>
+
+<div id="wastedScreen" class="screen" hidden>
+  <div class="panel">
+    <h2>WASTED</h2>
+    <p id="wastedText">You wake up at Solano General.</p>
+    <button id="btnWasted" class="menuBtn">LEAVE HOSPITAL</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
